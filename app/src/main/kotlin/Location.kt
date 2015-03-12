@@ -6,7 +6,6 @@ import android.content.Context
 import android.location.LocationManager
 import android.location.LocationListener
 import android.os.Bundle
-import android.location.Criteria
 import rx.subscriptions.Subscriptions
 import android.util.Log
 
@@ -28,6 +27,8 @@ fun requestLocation(context: Context): Observable<Location> {
             locationManager.requestLocationUpdates(it, 0, 0f, listener)
         }
 
-        obs.add(Subscriptions.create { locationManager.removeUpdates(listener) })
+        obs.add(Subscriptions.create {
+            Log.i(TAG, "removing location subscription")
+            locationManager.removeUpdates(listener) })
     }
 }
