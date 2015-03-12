@@ -16,9 +16,14 @@ import android.net.Uri
 import android.content.Intent
 import android.location.Location
 import java.util.concurrent.TimeUnit
+import java.util.LinkedList
 
 
 public class VenueListActivity : ListActivity() {
+
+    private var viewModels = ArrayList<VenueViewModel>()
+    private var adaptor: ArrayAdapter<VenueViewModel>? = null
+    private var subscriptions = LinkedList<rx.Subscription>()
 
     class VenueViewModel(val venue: Venue) {
         override fun toString(): String {
@@ -30,9 +35,10 @@ public class VenueListActivity : ListActivity() {
 
     fun handleResult(r: Result) {
         val venues = r.response.groups?.let { it.flatMap  { it.items.map { it.venue  } } }
-        val items = venues?.let { it.sortBy { it.location?.distance ?: Integer.MAX_VALUE }.map { VenueViewModel(it) }.toArrayList() } ?: ArrayList<VenueViewModel>()
-        val adaptor = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
-        getListView().setAdapter(adaptor)
+        var items = venues?.let { it.sortBy { it.location?.distance ?: Integer.MAX_VALUE }.map { VenueViewModel(it) }.toArrayList() } ?: ArrayList<VenueViewModel>()
+        viewModels.clear()
+        viewModels.addAll(items)
+        adaptor?.notifyDataSetChanged()
     }
 
     fun handleError(ex: Throwable) {
@@ -68,8 +74,12 @@ public class VenueListActivity : ListActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         val proxy = Foursquare()
         val context = this
+
+        adaptor = ArrayAdapter(this, android.R.layout.simple_list_item_1, viewModels)
+        getListView().setAdapter(adaptor)
 
         getListView().setOnItemClickListener { (adapterView, view, pos, id) ->
             val item = adapterView.getItemAtPosition(pos) as VenueViewModel
@@ -77,7 +87,7 @@ public class VenueListActivity : ListActivity() {
             handleVenueTouch(item.venue)
         }
 
-        requestLocation(this)
+        var subscription = requestLocation(this)
                 .subscribeOn(AndroidSchedulers.mainThread())
                 .scan { (a, b) -> bestLocationWrapper(a, b) }
                 .throttleLast(3, TimeUnit.SECONDS)
@@ -86,5 +96,13 @@ public class VenueListActivity : ListActivity() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ handleResult(it) }, { handleError(it) }, { Log.i(TAG, "complete") })
+
+        subscriptions.add(subscription)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        subscriptions.forEach { it.unsubscribe() }
+        subscriptions.clear()
     }
 }
