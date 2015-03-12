@@ -10,6 +10,7 @@ import rx.subscriptions.Subscriptions
 import android.util.Log
 
 fun requestLocation(context: Context): Observable<Location> {
+    Log.i(TAG, "creating location subscription")
     val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     return Observable.create<Location> { obs ->
         val listener = object : LocationListener {

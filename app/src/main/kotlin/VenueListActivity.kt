@@ -66,16 +66,8 @@ public class VenueListActivity : ListActivity() {
         return one
     }
 
-    fun bestLocationWrapper(one: Location, two: Location): Location {
-        val best = bestLocation(one, two)
-        Log.i(TAG, "Locations: $one and $two --> $best")
-        return best
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val proxy = Foursquare()
         val context = this
 
         adaptor = ArrayAdapter(this, android.R.layout.simple_list_item_1, viewModels)
@@ -86,22 +78,28 @@ public class VenueListActivity : ListActivity() {
             Toast.makeText(context, "click: $item", Toast.LENGTH_SHORT).show()
             handleVenueTouch(item.venue)
         }
+    }
 
+    override fun onStart() {
+        super.onStart()
+
+        val proxy = Foursquare()
         var subscription = requestLocation(this)
                 .subscribeOn(AndroidSchedulers.mainThread())
-                .scan { (a, b) -> bestLocationWrapper(a, b) }
+                .scan { (a, b) -> bestLocation(a, b) }
                 .throttleLast(3, TimeUnit.SECONDS)
                 .map { "${it.getLatitude()},${it.getLongitude()}" }
                 .flatMap { proxy.explore("", it) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ handleResult(it) }, { handleError(it) }, { Log.i(TAG, "complete") })
+                .subscribe({ handleResult(it) }, { handleError(it) })
 
         subscriptions.add(subscription)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onStop() {
+        super.onStop()
+
         subscriptions.forEach { it.unsubscribe() }
         subscriptions.clear()
     }
