@@ -15,8 +15,9 @@ import android.widget.Toast
 import android.net.Uri
 import android.content.Intent
 import android.location.Location
-import java.util.concurrent.TimeUnit
 import java.util.LinkedList
+import android.os.SystemClock
+import rx.Observable
 
 
 public class VenueListActivity : ListActivity() {
@@ -58,14 +59,6 @@ public class VenueListActivity : ListActivity() {
         }
     }
 
-    fun bestLocation(one: Location, two: Location): Location {
-        val timeThreshold = 1000 * 60 * 1
-        if(one.getAccuracy() > two.getAccuracy()) return two
-        val timeDelta = one.getTime() - two.getTime()
-        if(timeDelta > timeThreshold) return one
-        return one
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val context = this
@@ -75,21 +68,35 @@ public class VenueListActivity : ListActivity() {
 
         getListView().setOnItemClickListener { (adapterView, view, pos, id) ->
             val item = adapterView.getItemAtPosition(pos) as VenueViewModel
-            Toast.makeText(context, "click: $item", Toast.LENGTH_SHORT).show()
             handleVenueTouch(item.venue)
         }
     }
 
+    fun goodEnoughLocation(loc: Location): Boolean {
+        val oneSecondNanos = 10e9
+        val nanosThreshold = 10 * oneSecondNanos
+        val accuracyThreshold = 40
+        val ageNanos = SystemClock.elapsedRealtimeNanos() - loc.getElapsedRealtimeNanos()
+        return ageNanos < nanosThreshold && loc.getAccuracy() < accuracyThreshold
+    }
+
+    fun handleLocationFix(loc: Location): Observable<Result> {
+        val proxy = Foursquare()
+        val ll = "${loc.getLatitude()},${loc.getLongitude()}"
+        Toast.makeText(this, "Got location fix; querying Foursquare...",  Toast.LENGTH_SHORT).show()
+        return proxy.explore("", ll)
+    }
+
     override fun onStart() {
         super.onStart()
-
-        val proxy = Foursquare()
-        var subscription = requestLocation(this)
+        val locationTimeoutMillis = 3000
+        var subscription = bestLocation(this)
                 .subscribeOn(AndroidSchedulers.mainThread())
-                .scan { (a, b) -> bestLocation(a, b) }
-                .throttleLast(3, TimeUnit.SECONDS)
-                .map { "${it.getLatitude()},${it.getLongitude()}" }
-                .flatMap { proxy.explore("", it) }
+                .timestamp()
+                .takeUntil { it.getTimestampMillis() > locationTimeoutMillis || goodEnoughLocation(it.getValue()) }
+                .last()
+                .map { it.getValue() }
+                .flatMap { handleLocationFix(it) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ handleResult(it) }, { handleError(it) })
