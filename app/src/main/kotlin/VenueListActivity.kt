@@ -35,8 +35,14 @@ public class VenueListActivity : ListActivity() {
     }
 
     fun handleResult(r: Result) {
-        val venues = r.response.groups?.let { it.flatMap  { it.items.map { it.venue  } } }
-        var items = venues?.let { it.sortBy { it.location?.distance ?: Integer.MAX_VALUE }.map { VenueViewModel(it) }.toArrayList() } ?: ArrayList<VenueViewModel>()
+        val venues = r.response.groups?.let {
+            it.flatMap  { it.items.map { it.venue  } }
+        }
+        var items = venues?.let {
+            it
+                .sortBy { it.location?.distance ?: Integer.MAX_VALUE }
+                .map { VenueViewModel(it) }.toArrayList()
+        } ?: ArrayList<VenueViewModel>()
         viewModels.clear()
         viewModels.addAll(items)
         adaptor?.notifyDataSetChanged()
@@ -61,7 +67,6 @@ public class VenueListActivity : ListActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val context = this
 
         adaptor = ArrayAdapter(this, android.R.layout.simple_list_item_1, viewModels)
         getListView().setAdapter(adaptor)
@@ -72,7 +77,7 @@ public class VenueListActivity : ListActivity() {
         }
     }
 
-    fun goodEnoughLocation(loc: Location): Boolean {
+    private fun goodEnoughLocation(loc: Location): Boolean {
         val oneSecondNanos = 10e9
         val nanosThreshold = 10 * oneSecondNanos
         val accuracyThreshold = 40
@@ -80,10 +85,10 @@ public class VenueListActivity : ListActivity() {
         return ageNanos < nanosThreshold && loc.getAccuracy() < accuracyThreshold
     }
 
-    fun handleLocationFix(loc: Location): Observable<Result> {
+    private fun handleLocationFix(loc: Location): Observable<Result> {
         val proxy = Foursquare()
         val ll = "${loc.getLatitude()},${loc.getLongitude()}"
-        Toast.makeText(this, "Got location fix; querying Foursquare...",  Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Got location; looking for cafes...",  Toast.LENGTH_SHORT).show()
         return proxy.explore("", ll)
     }
 
