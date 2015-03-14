@@ -5,7 +5,6 @@ import com.ehnmark.fikasug.net.Foursquare
 import rx.android.schedulers.AndroidSchedulers
 import com.ehnmark.fikasug.net.Result
 import java.util.ArrayList
-import rx.schedulers.Schedulers
 import android.app.AlertDialog
 import android.util.Log
 import com.ehnmark.fikasug.net.Venue
@@ -50,9 +49,12 @@ public class VenueListActivity : Activity() {
                 .sortBy { it.location?.distance ?: Integer.MAX_VALUE }
                 .map { VenueViewModel(it) }.toArrayList()
         } ?: ArrayList<VenueViewModel>()
+
         viewModels.clear()
         viewModels.addAll(items)
         adapter?.notifyDataSetChanged()
+
+        Toast.makeText(this, "Found ${viewModels.size()} cafes",  Toast.LENGTH_SHORT).show()
     }
 
     fun handleError(ex: Throwable) {
@@ -171,13 +173,11 @@ public class VenueListActivity : Activity() {
         super.onStart()
         val locationTimeoutMillis = 3000
         var subscription = bestLocation(this)
-                .subscribeOn(AndroidSchedulers.mainThread())
                 .timestamp()
                 .takeUntil { it.getTimestampMillis() > locationTimeoutMillis || goodEnoughLocation(it.getValue()) }
                 .last()
                 .map { it.getValue() }
                 .flatMap { handleLocationFix(it) }
-                .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ handleResult(it) }, { handleError(it) })
 
