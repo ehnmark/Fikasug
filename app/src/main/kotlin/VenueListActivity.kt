@@ -23,6 +23,9 @@ import android.support.v7.widget.RecyclerView.ViewHolder
 import android.view.ViewGroup
 import android.widget.TextView
 import android.view.LayoutInflater
+import android.support.v7.widget.DefaultItemAnimator
+import android.view.View
+import android.widget.RatingBar
 
 
 public class VenueListActivity : Activity() {
@@ -34,8 +37,7 @@ public class VenueListActivity : Activity() {
     class VenueViewModel(val venue: Venue) {
         override fun toString(): String {
             val d = venue.location?.distance?.let { " ($it m)" } ?: ""
-            val r = venue.rating?.let { ": $it" } ?: ""
-            return "${venue.name}${d}${r}"
+            return "${venue.name}${d}"
         }
     }
 
@@ -64,27 +66,43 @@ public class VenueListActivity : Activity() {
     private fun handleVenueTouch(venue: Venue) {
         val lat = venue.location?.lat
         val lon = venue.location?.lng
-        if(lat != null && lon != null) {
-            val uri = "geo:$lat,$lon"
+        val name = venue.name
+        if(lat != null && lon != null && name != null) {
+            val uri = "geo:$lat,$lon?q=$lat,$lon($name)"
             startActivity(Intent(android.content.Intent.ACTION_VIEW, Uri.parse(uri)))
         }
     }
 
     class ViewModelHolder(
-            private val view: TextView,
+            private val view: View,
             private val clickAction: (VenueViewModel) -> Unit)
     : ViewHolder(view) {
+        private val textView = view.findViewById(R.id.venue_name) as? TextView
+        private val rating = view.findViewById(R.id.venue_rating) as? RatingBar
         private var viewModel: VenueViewModel? = null
         {
             view.setOnClickListener {
                 viewModel?.let { clickAction(it) }
             }
         }
+        private fun updateView() {
+            if(viewModel != null && textView != null && rating != null) {
+                textView.setText(viewModel.toString())
+                rating.setIsIndicator(true)
+                val value = viewModel?.venue?.rating
+                if(value != null) {
+                    val value = value/2f
+                    rating.setVisibility(View.VISIBLE)
+                    rating.setRating(value.toFloat())
+                } else {
+                    rating.setVisibility(View.INVISIBLE)
+                }
+            }
+
+        }
         fun setViewModel(vm: VenueViewModel?) {
             viewModel = vm
-            vm?.let {
-                view.setText(vm.toString())
-            }
+            updateView()
         }
     }
 
@@ -96,7 +114,7 @@ public class VenueListActivity : Activity() {
             return parent?.let {
                 LayoutInflater
                         .from(it.getContext())
-                        .inflate(R.layout.venue_item, parent, false) as? TextView
+                        .inflate(R.layout.venue_item, parent, false)
 
             }?.let {
                 ViewModelHolder(it, clickAction)
@@ -119,6 +137,7 @@ public class VenueListActivity : Activity() {
         val view = findViewById(R.id.venue_recycler_view) as? RecyclerView
         view?.let {
             it.setLayoutManager(LinearLayoutManager(this))
+            it.setItemAnimator(DefaultItemAnimator())
             it.setHasFixedSize(true)
 
             adapter = VenueListAdapter(viewModels, { handleVenueTouch(it.venue) })
