@@ -1,7 +1,6 @@
 package com.ehnmark.fikasug
 
 import android.os.Bundle
-import android.widget.ArrayAdapter
 import com.ehnmark.fikasug.net.Foursquare
 import rx.android.schedulers.AndroidSchedulers
 import com.ehnmark.fikasug.net.Result
@@ -18,14 +17,18 @@ import java.util.LinkedList
 import android.os.SystemClock
 import rx.Observable
 import android.app.Activity
-import android.widget.ListView
-import android.graphics.Color
+import android.support.v7.widget.RecyclerView
+import android.support.v7.widget.LinearLayoutManager
+import android.support.v7.widget.RecyclerView.ViewHolder
+import android.view.ViewGroup
+import android.widget.TextView
+import android.view.LayoutInflater
 
 
 public class VenueListActivity : Activity() {
 
     private var viewModels = ArrayList<VenueViewModel>()
-    private var adaptor: ArrayAdapter<VenueViewModel>? = null
+    private var adapter: VenueListAdapter? = null
     private var subscriptions = LinkedList<rx.Subscription>()
 
     class VenueViewModel(val venue: Venue) {
@@ -47,7 +50,7 @@ public class VenueListActivity : Activity() {
         } ?: ArrayList<VenueViewModel>()
         viewModels.clear()
         viewModels.addAll(items)
-        adaptor?.notifyDataSetChanged()
+        adapter?.notifyDataSetChanged()
     }
 
     fun handleError(ex: Throwable) {
@@ -67,21 +70,67 @@ public class VenueListActivity : Activity() {
         }
     }
 
+    class ViewModelHolder(
+            private val view: TextView,
+            private val clickAction: (VenueViewModel) -> Unit)
+    : ViewHolder(view) {
+        private var viewModel: VenueViewModel? = null
+        {
+            view.setOnClickListener {
+                viewModel?.let { clickAction(it) }
+            }
+        }
+        fun setViewModel(vm: VenueViewModel?) {
+            viewModel = vm
+            vm?.let {
+                view.setText(vm.toString())
+            }
+        }
+    }
+
+    class VenueListAdapter(
+            private val items: List<VenueViewModel>,
+            private val clickAction: (VenueViewModel) -> Unit)
+    : RecyclerView.Adapter<ViewModelHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup?, pos: Int): ViewModelHolder? {
+            return parent?.let {
+                LayoutInflater
+                        .from(it.getContext())
+                        .inflate(R.layout.venue_item, parent, false) as? TextView
+
+            }?.let {
+                ViewModelHolder(it, clickAction)
+            }
+        }
+
+        override fun onBindViewHolder(holder: ViewModelHolder?, pos: Int) {
+            if(pos < items.size()) {
+                val item = items.get(pos)
+                holder?.setViewModel(item)
+            }
+        }
+
+        override fun getItemCount(): Int {
+            return items.size()
+        }
+    }
+
+    private fun setupRecyclerView() {
+        val view = findViewById(R.id.venue_recycler_view) as? RecyclerView
+        view?.let {
+            it.setLayoutManager(LinearLayoutManager(this))
+            it.setHasFixedSize(true)
+
+            adapter = VenueListAdapter(viewModels, { handleVenueTouch(it.venue) })
+            it.setAdapter(adapter)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.venue_list)
 
-        //val view = RecyclerView()
-        val view = findViewById(R.id.venueListView) as ListView
-        view.setBackgroundColor(Color.GREEN)
-
-        adaptor = ArrayAdapter(this, android.R.layout.simple_list_item_1, viewModels)
-        view.setAdapter(adaptor)
-
-        view.setOnItemClickListener { (adapterView, view, pos, id) ->
-            val item = adapterView.getItemAtPosition(pos) as VenueViewModel
-            handleVenueTouch(item.venue)
-        }
+        setupRecyclerView()
     }
 
     private fun goodEnoughLocation(loc: Location): Boolean {
