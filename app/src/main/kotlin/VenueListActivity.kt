@@ -25,6 +25,7 @@ import android.view.LayoutInflater
 import android.support.v7.widget.DefaultItemAnimator
 import android.view.View
 import android.widget.RatingBar
+import android.app.ProgressDialog
 
 
 public class VenueListActivity : Activity() {
@@ -32,6 +33,7 @@ public class VenueListActivity : Activity() {
     private var viewModels = ArrayList<VenueViewModel>()
     private var adapter: VenueListAdapter? = null
     private var subscriptions = LinkedList<rx.Subscription>()
+    private var progressDialog: ProgressDialog? = null
 
     class VenueViewModel(val venue: Venue) {
         override fun toString(): String {
@@ -41,6 +43,7 @@ public class VenueListActivity : Activity() {
     }
 
     fun handleResult(r: Result) {
+        progressDialog?.dismiss()
         val venues = r.response.groups?.let {
             it.flatMap  { it.items.map { it.venue  } }
         }
@@ -165,12 +168,22 @@ public class VenueListActivity : Activity() {
     private fun handleLocationFix(loc: Location): Observable<Result> {
         val proxy = Foursquare()
         val ll = "${loc.getLatitude()},${loc.getLongitude()}"
-        Toast.makeText(this, "Got location; looking for cafes...",  Toast.LENGTH_SHORT).show()
+        progressDialog?.setMessage("looking for cafes…")
         return proxy.explore("", ll)
+    }
+
+    private fun startProgress() {
+        progressDialog = ProgressDialog.show(
+                this,
+                "Retrieving results",
+                "Finding location…",
+                true,
+                false)
     }
 
     override fun onStart() {
         super.onStart()
+        startProgress()
         val locationTimeoutMillis = 3000
         var subscription = bestLocation(this)
                 .timestamp()
@@ -186,7 +199,7 @@ public class VenueListActivity : Activity() {
 
     override fun onStop() {
         super.onStop()
-
+        progressDialog?.dismiss()
         subscriptions.forEach { it.unsubscribe() }
         subscriptions.clear()
     }
