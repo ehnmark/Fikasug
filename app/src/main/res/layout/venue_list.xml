@@ -9,6 +9,16 @@
         android:id="@+id/venue_recycler_view"
         android:scrollbars="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_weight="1.0"
+        android:layout_height="0dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:background="#0732a2"
+        android:textColor="#ffffff"
+        android:padding="5dp"
+        android:gravity="right"
+        android:layout_height="wrap_content"
+        android:text="data from Foursquare"></TextView>
 
 </LinearLayout>
