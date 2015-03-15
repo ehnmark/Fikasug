@@ -5,6 +5,7 @@
     android:orientation="horizontal"
     android:paddingBottom="20dp"
     android:paddingTop="16dp"
+    android:background="?attr/selectableItemBackground"
     >
 
     <TextView xmlns:android="http://schemas.android.com/apk/res/android"
