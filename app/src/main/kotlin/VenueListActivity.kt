@@ -26,11 +26,12 @@ import android.support.v7.widget.DefaultItemAnimator
 import android.view.View
 import android.widget.RatingBar
 import android.app.ProgressDialog
-import java.util.concurrent.TimeUnit
+import android.support.v4.widget.SwipeRefreshLayout
 
 
 public class VenueListActivity : Activity() {
 
+    private var swipeLayout: SwipeRefreshLayout? = null
     private var viewModels = ArrayList<VenueViewModel>()
     private var adapter: VenueListAdapter? = null
     private var subscriptions = LinkedList<rx.Subscription>()
@@ -45,6 +46,7 @@ public class VenueListActivity : Activity() {
 
     fun handleResult(r: Result) {
         progressDialog?.dismiss()
+        swipeLayout?.setRefreshing(false)
         val venues = r.response.groups?.let {
             it.flatMap  { it.items.map { it.venue  } }
         }
@@ -151,11 +153,11 @@ public class VenueListActivity : Activity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.venue_list)
-
-        setupRecyclerView()
+    private fun setupSwipeLayout() {
+        swipeLayout = findViewById(R.id.swipe_container) as? SwipeRefreshLayout
+        swipeLayout?.setOnRefreshListener {
+            refreshVenues()
+        }
     }
 
     private fun goodEnoughLocation(loc: Location): Boolean {
@@ -174,18 +176,16 @@ public class VenueListActivity : Activity() {
     }
 
     private fun startProgress() {
-        val cancellable = viewModels.size() > 0
         progressDialog = ProgressDialog.show(
                 this,
                 "Retrieving results",
                 "Finding location…",
                 true,
-                cancellable)
+                false)
     }
 
-    override fun onStart() {
-        super.onStart()
-        startProgress()
+    private fun refreshVenues() {
+        swipeLayout?.setRefreshing(true)
         val locationTimeoutMillis = 3000
         var subscription = bestLocation(this)
                 .timestamp()
@@ -197,6 +197,19 @@ public class VenueListActivity : Activity() {
                 .subscribe({ handleResult(it) }, { handleError(it) })
 
         subscriptions.add(subscription)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.venue_list)
+        setupSwipeLayout()
+        setupRecyclerView()
+        startProgress()
+        refreshVenues()
+    }
+
+    override fun onStart() {
+        super.onStart()
     }
 
     override fun onStop() {
