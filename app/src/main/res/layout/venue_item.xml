@@ -20,7 +20,7 @@
         android:id="@+id/venue_rating"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:paddingRight="16dp"
+        android:layout_marginRight="16dp"
         android:gravity="center_vertical|right"
         style="?android:attr/ratingBarStyleSmall"
         android:isIndicator="true"

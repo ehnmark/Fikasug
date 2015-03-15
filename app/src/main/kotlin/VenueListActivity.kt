@@ -26,6 +26,7 @@ import android.support.v7.widget.DefaultItemAnimator
 import android.view.View
 import android.widget.RatingBar
 import android.app.ProgressDialog
+import java.util.concurrent.TimeUnit
 
 
 public class VenueListActivity : Activity() {
@@ -173,12 +174,13 @@ public class VenueListActivity : Activity() {
     }
 
     private fun startProgress() {
+        val cancellable = viewModels.size() > 0
         progressDialog = ProgressDialog.show(
                 this,
                 "Retrieving results",
                 "Finding location…",
                 true,
-                false)
+                cancellable)
     }
 
     override fun onStart() {
