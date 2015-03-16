@@ -64,6 +64,7 @@ public class VenueListActivity : Activity() {
     }
 
     fun handleError(ex: Throwable) {
+        progressDialog?.dismiss()
         Log.e(TAG, "Error", ex)
         AlertDialog.Builder(this)
             .setTitle("Error")
@@ -99,9 +100,9 @@ public class VenueListActivity : Activity() {
                 rating.setIsIndicator(true)
                 val value = viewModel?.venue?.rating
                 if(value != null) {
-                    val value = value/2f
+                    val scaleOneToFive = value/2f
                     rating.setVisibility(View.VISIBLE)
-                    rating.setRating(value.toFloat())
+                    rating.setRating(scaleOneToFive.toFloat())
                 } else {
                     rating.setVisibility(View.INVISIBLE)
                 }
@@ -181,7 +182,16 @@ public class VenueListActivity : Activity() {
                 "Retrieving results",
                 "Finding location…",
                 true,
-                false)
+                true)
+
+        progressDialog?.setOnCancelListener { unsubscribeAll() }
+    }
+
+    private fun unsubscribeAll() {
+        subscriptions.forEach {
+            if (! it.isUnsubscribed()) it.unsubscribe()
+        }
+        subscriptions.clear()
     }
 
     private fun refreshVenues() {
@@ -208,14 +218,9 @@ public class VenueListActivity : Activity() {
         refreshVenues()
     }
 
-    override fun onStart() {
-        super.onStart()
-    }
-
     override fun onStop() {
         super.onStop()
         progressDialog?.dismiss()
-        subscriptions.forEach { it.unsubscribe() }
-        subscriptions.clear()
+        unsubscribeAll()
     }
 }
